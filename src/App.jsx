@@ -32,19 +32,15 @@ const lodgingSteps = [
   { date: "Aug 7", city: "Koblenz", lodging: "Schönes Apartment 4", coords: [50.3569, 7.5985], mode: 'train', country: 'Germany', isDestination: true, destinationNumber: 3 },
   { date: "Aug 8", city: "Transit", lodging: "Overnight Train", coords: [48.1351, 11.5820], mode: 'train', country: 'Germany', isDestination: false },
   { date: "Aug 9", city: "Salzburg", lodging: "a&o Salzburg Hauptbahnhof", coords: [47.8100, 13.0447], mode: 'train', country: 'Austria', isDestination: true, destinationNumber: 4 },
-  { date: "Aug 10", city: "Trieste", lodging: "Vista&Capriccio", coords: [45.6503, 13.7784], mode: 'drive', country: 'Italy', isDestination: true, destinationNumber: 5 },
-  { date: "Aug 11-12", city: "Pula", lodging: "Pula City Center", coords: [44.8694, 13.8467], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 6 },
-  { date: "Aug 13-14", city: "Plitvice", lodging: "Plitvice ZG", coords: [44.8854, 15.6214], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 7 },
-  { date: "Aug 15-16", city: "Kranjska Gora", lodging: "Apartma Anastasija", coords: [46.4859, 13.7860], mode: 'drive', country: 'Slovenia', isDestination: true, destinationNumber: 8 },
-  { date: "Aug 17-18", city: "Most na Soči", lodging: "Apartment Mika", coords: [46.1880, 13.7353], mode: 'drive', country: 'Slovenia', isDestination: true, destinationNumber: 9 },
-  { date: "Aug 19", city: "Cerknica", lodging: "Apartment Knap", coords: [45.8018, 14.3644], mode: 'drive', country: 'Slovenia', isDestination: true, destinationNumber: 10 },
-  { date: "Aug 20", city: "Vižinada", lodging: "Nona Nina", coords: [45.3347, 13.7628], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 11 },
-  { date: "Aug 21", city: "Trieste (Return)", lodging: "Rental Return", coords: [45.6503, 13.7784], mode: 'train', country: 'Italy', isDestination: false },
-  { date: "Aug 21", city: "Venice (Mestre)", lodging: "Ca' Vivaldi Appartamento", coords: [45.4897, 12.2451], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 12 },
-  { date: "Aug 22-23", city: "Volastra", lodging: "CREUZA DE 5 TERRE", coords: [44.1175, 9.7328], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 13 },
-  { date: "Aug 24-25", city: "Lucca", lodging: "Casa Alice Lucca centro", coords: [43.8430, 10.5024], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 14 },
-  { date: "Aug 26", city: "Rome", lodging: "Stopover", coords: [41.9028, 12.4964], mode: 'flight', country: 'Italy', isDestination: false },
-  { date: "Aug 26", city: "Reykjavik", lodging: "Skólavörðustígur Apartments", coords: [64.1446, -21.9371], mode: 'flight', country: 'Iceland', isDestination: true, destinationNumber: 15 },
+  { date: "Aug 10", city: "Dražice", lodging: "Apartman Dražice-Grobnik", coords: [45.3878, 14.5089], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 5 },
+  { date: "Aug 11-12", city: "Plitvice", lodging: "Apartmani Brium", coords: [45.2931, 15.6203], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 6 },
+  { date: "Aug 13-15", city: "Mojstrana", lodging: "Apartma Lipa", coords: [46.4774, 13.9276], mode: 'drive', country: 'Slovenia', isDestination: true, destinationNumber: 7 },
+  { date: "Aug 16-17", city: "Most na Soči", lodging: "Apartment Mika", coords: [46.1880, 13.7353], mode: 'drive', country: 'Slovenia', isDestination: true, destinationNumber: 8 },
+  { date: "Aug 18-20", city: "Vižinada", lodging: "Nona Nina", coords: [45.3347, 13.7628], mode: 'drive', country: 'Croatia', isDestination: true, destinationNumber: 9 },
+  { date: "Aug 21", city: "Venice (Mestre)", lodging: "Ca' Vivaldi Appartamento", coords: [45.4897, 12.2451], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 10 },
+  { date: "Aug 22-24", city: "Volastra", lodging: "CREUZA DE 5 TERRE", coords: [44.1175, 9.7328], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 11 },
+  { date: "Aug 25", city: "Lucca", lodging: "Casa Alice Lucca centro", coords: [43.8430, 10.5024], mode: 'train', country: 'Italy', isDestination: true, destinationNumber: 12 },
+  { date: "Aug 26", city: "Reykjavik", lodging: "Skólavörðustígur Apartments", coords: [64.1446, -21.9371], mode: 'flight', country: 'Iceland', isDestination: true, destinationNumber: 13 },
   { date: "Aug 27", city: "Halifax", lodging: "Flight Home", coords: [44.88, -63.5], mode: 'flight', country: 'Canada', isDestination: false }
 ];
 
@@ -72,87 +68,63 @@ const transitRoutes = [
     fromCoords: [51.0357, 3.7103], // Gent-Sint-Pieters
     toCoords: [50.3569, 7.5985], // Koblenz Hbf
     waypoints: [[50.8353, 4.3363], [50.9430, 6.9589]], // Brussels, Cologne
-    travelTime: '5h 30m'
+    travelTime: 'h 30m'
   },
   {
     id: 'koblenz-salzburg',
     mode: 'train',
     fromCoords: [50.3569, 7.5985], // Koblenz Hbf
     toCoords: [47.8128, 13.0456], // Salzburg Hbf
-    waypoints: [], // No Munich waypoint - direct overnight train
+    waypoints: [],
     travelTime: '9h 45m'
   },
   {
-    id: 'salzburg-trieste',
+    id: 'salzburg-drazice',
     mode: 'drive',
     fromCoords: [47.8100, 13.0447],
-    toCoords: [45.6503, 13.7784],
+    toCoords: [45.3878, 14.5089],
+    waypoints: [],
+    travelTime: '3h 30m'
+  },
+  {
+    id: 'drazice-plitvice',
+    mode: 'drive',
+    fromCoords: [45.3878, 14.5089],
+    toCoords: [45.2931, 15.6203],
+    waypoints: [],
+    travelTime: '1h 15m'
+  },
+  {
+    id: 'plitvice-mojstrana',
+    mode: 'drive',
+    fromCoords: [45.2931, 15.6203],
+    toCoords: [46.4774, 13.9276],
     waypoints: [],
     travelTime: '3h 45m'
   },
   {
-    id: 'trieste-pula',
+    id: 'mojstrana-mostnasoci',
     mode: 'drive',
-    fromCoords: [45.6503, 13.7784],
-    toCoords: [44.8694, 13.8467],
-    waypoints: [],
-    travelTime: '2h 30m'
+    fromCoords: [46.4774, 13.9276],
+    toCoords: [46.1880, 13.7353],
+    waypoints: [[46.4, 13.74]], // Via Vršič Pass
+    travelTime: '1h 30m'
   },
   {
-    id: 'pula-plitvice',
+    id: 'mostnasoci-vizinada',
     mode: 'drive',
-    fromCoords: [44.8694, 13.8467],
-    toCoords: [44.8854, 15.6214],
+    fromCoords: [46.1880, 13.7353],
+    toCoords: [45.3347, 13.7628],
     waypoints: [],
     travelTime: '2h 45m'
   },
   {
-    id: 'plitvice-kranjska',
-    mode: 'drive',
-    fromCoords: [44.8854, 15.6214],
-    toCoords: [46.4859, 13.7860],
-    waypoints: [],
-    travelTime: '3h 15m'
-  },
-  {
-    id: 'kranjska-mostnasoci',
-    mode: 'drive',
-    fromCoords: [46.4859, 13.7860],
-    toCoords: [46.1880, 13.7353],
-    waypoints: [[46.29, 13.74]], // Via Vršič Pass
-    travelTime: '1h 45m'
-  },
-  {
-    id: 'mostnasoci-cerknica',
-    mode: 'drive',
-    fromCoords: [46.1880, 13.7353],
-    toCoords: [45.8018, 14.3644],
-    waypoints: [],
-    travelTime: '2h 00m'
-  },
-  {
-    id: 'cerknica-vizinada',
-    mode: 'drive',
-    fromCoords: [45.8018, 14.3644],
-    toCoords: [45.3347, 13.7628],
-    waypoints: [],
-    travelTime: '2h 15m'
-  },
-  {
-    id: 'vizinada-trieste2',
+    id: 'vizinada-venice',
     mode: 'drive',
     fromCoords: [45.3347, 13.7628],
-    toCoords: [45.6503, 13.7784],
+    toCoords: [45.4897, 12.2451],
     waypoints: [],
-    travelTime: '1h 45m'
-  },
-  {
-    id: 'trieste-venice',
-    mode: 'train',
-    fromCoords: [45.6600, 13.7840], // Trieste Centrale
-    toCoords: [45.4834, 12.2327], // Venezia Mestre
-    waypoints: [],
-    travelTime: '2h 00m'
+    travelTime: '2h 30m'
   },
   {
     id: 'venice-volastra',
@@ -171,20 +143,12 @@ const transitRoutes = [
     travelTime: '2h 15m'
   },
   {
-    id: 'lucca-rome',
+    id: 'lucca-reykjavik',
     mode: 'flight',
     fromCoords: [43.8430, 10.5024],
-    toCoords: [41.9028, 12.4964],
-    waypoints: [],
-    travelTime: '1h 15m'
-  },
-  {
-    id: 'rome-reykjavik',
-    mode: 'flight',
-    fromCoords: [41.9028, 12.4964],
     toCoords: [64.1446, -21.9371],
     waypoints: [],
-    travelTime: '5h 30m'
+    travelTime: '5h 45m'
   },
   {
     id: 'reykjavik-halifax',
