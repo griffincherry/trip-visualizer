@@ -56,8 +56,8 @@ const ICONS = {
 // Renders a Material Symbols Rounded icon as a React element
 const Icon = ({ name, size = 16, className = '', style = {} }) => (
   <span
-    className={`material-symbols-rounded ${className}`}
-    style={{ fontSize: `${size}px`, lineHeight: 1, userSelect: 'none', ...style }}
+    className={`material-symbols-rounded map-icon ${className}`}
+    style={{ fontSize: `${size}px`, ...style }}
   >
     {name}
   </span>
@@ -66,22 +66,24 @@ const Icon = ({ name, size = 16, className = '', style = {} }) => (
 // Returns a Material Symbols icon as an HTML string for Leaflet map labels
 const getIconHtml = (iconKey, color = '#000', size = 14) => {
   const name = ICONS[iconKey] || ICONS.activityDefault;
-  return `<span class="material-symbols-rounded" style="font-size: ${size}px; color: ${color}; line-height: 1; user-select: none; flex-shrink: 0;">${name}</span>`;
+  return `<span class="material-symbols-rounded map-icon" style="font-size: ${size}px; color: ${color};">${name}</span>`;
 };
 
+/// Color values — edit the hex values in src/index.css (:root block) to change colors globally.
+// These hex copies are needed for JS contexts: SVG fill attributes, Leaflet HTML strings, inline alpha variants.
 const COLORS = {
-  primary: '#5a2d5a',
-  primaryLight: '#f6f0f6',
-  flight: '#4775d1',
-  flightMuted: '#7A95D9',
-  train: '#46a384',
-  trainMuted: '#6BB89D',
-  drive: '#cc5c5c',
-  driveMuted: '#D97A7A',
-  home: '#8b5a8b',
-  activity: '#f59e0b',
-  activityMuted: '#fbbf24',
-  activityLight: '#fef3c7'
+  primary:        '#5a2d5a',
+  primaryLight:   '#f6f0f6',
+  flight:         '#4775d1',
+  flightMuted:    '#7a95d9',
+  train:          '#46a384',
+  trainMuted:     '#6bb89d',
+  drive:          '#cc5c5c',
+  driveMuted:     '#d97a7a',
+  home:           '#8b5a8b',
+  activity:       '#f59e0b',
+  activityMuted:  '#fbbf24',
+  activityLight:  '#fef3c7',
 };
 
 // Trip metadata
@@ -344,9 +346,13 @@ const MapComponent = ({ selectedId, onSelect, mapMode, selectedTimelineItem, det
   const routeLabelsLayerRef = useRef(null);
   const mapLabelsLayerRef = useRef(null);
   const geoJsonLayerRef = useRef(null);
+  const geoJsonLakesRef = useRef(null);
+  const atlasBaseLayerRef = useRef(null);
   const mapModeRef = useRef(mapMode);
+  const prevSelectionRef = useRef(null);
   const [routeGeometries, setRouteGeometries] = useState({});
   const [currentZoom, setCurrentZoom] = useState(null);
+  const [debugOpacity, setDebugOpacity] = useState({ fill: 0, stroke: 0, ocean: 0 });
 
   useEffect(() => {
     mapModeRef.current = mapMode;
@@ -363,14 +369,12 @@ const MapComponent = ({ selectedId, onSelect, mapMode, selectedTimelineItem, det
       attributionControl: false
 });
 
-// Calculate bounds of all destinations for initial view
-const allDestCoords = lodgingSteps
-  .filter(step => step.isDestination)
-  .map(step => step.coords);
+// Calculate bounds of all stops (including home) for initial view
+const allCoords = lodgingSteps.map(step => step.coords);
 
-if (allDestCoords.length > 0) {
-  const bounds = L.latLngBounds(allDestCoords);
-  map.fitBounds(bounds, { padding: [50, 50] });
+if (allCoords.length > 0) {
+  const bounds = L.latLngBounds(allCoords);
+  map.fitBounds(bounds, { padding: [100, 100] });
 }
 
 mapRef.current = map;
@@ -388,14 +392,27 @@ mapRef.current = map;
       maxZoom: 19
     });
 
-    const layers = { atlas: atlasLayer, road: roadLayer, terrain: terrainLayer };
-    layers[mapMode].addTo(map);
-    
+    // In Atlas mode (zoomed out), skip base tiles — ocean blue background shows through
+    atlasBaseLayerRef.current = atlasLayer;
+    if (mapMode === 'atlas') {
+      map.getContainer().style.backgroundColor = 'var(--atlas-ocean)';
+      // Only add base tile if already zoomed in
+      if (map.getZoom() >= 10) atlasLayer.addTo(map);
+    } else {
+      const layers = { road: roadLayer, terrain: terrainLayer };
+      layers[mapMode].addTo(map);
+    }
+
     // Labels layer for Atlas mode
+    // Labels pane above lakes
+    map.createPane('atlasLabels');
+    map.getPane('atlasLabels').style.zIndex = 500;
+    map.getPane('atlasLabels').style.pointerEvents = 'none';
+
     mapLabelsLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      zIndex: 1000
+      pane: 'atlasLabels'
     });
-    
+
     if (mapMode === 'atlas') {
       mapLabelsLayerRef.current.addTo(map);
     }
@@ -410,59 +427,104 @@ mapRef.current = map;
     fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson')
       .then(response => response.json())
       .then(data => {
-        const colors = [
-          '#fef2f2', // light red
-          '#f0fdf4', // light green  
-          '#fffbeb', // light yellow
-          '#f0f9ff', // light blue
-          '#f5f3ff', // light purple
-          '#fef7ff', // light pink
-          '#f0fdfa', // light cyan
-          '#fffbf0'  // light orange
-        ];
-        
-        // Better color distribution using multiple hash factors
-        const getColorForCountry = (name) => {
-          if (!name) return colors[0];
-          
-          // Use multiple characteristics to spread colors
-          const firstChar = name.charCodeAt(0);
-          const length = name.length;
-          const vowelCount = (name.match(/[aeiou]/gi) || []).length;
-          
-          // Combine factors to get more varied distribution
-          const colorIndex = (firstChar + length * 3 + vowelCount * 7) % colors.length;
-          return colors[colorIndex];
-        };
-        
-        // Create GeoJSON layer with very subtle styling
+        const rootStyles = getComputedStyle(document.documentElement);
+        const colors = Array.from({ length: 9 }, (_, i) =>
+          rootStyles.getPropertyValue(`--atlas-color-${i + 1}`).trim()
+        );
+
+        // Create GeoJSON layer for country fills + borders
         geoJsonLayerRef.current = L.geoJson(data, {
           style: (feature) => {
-            const name = feature.properties.NAME || feature.properties.name;
+            // Use Natural Earth's pre-computed MAPCOLOR9 — guarantees no adjacent countries share a color
+            const colorIndex = (feature.properties.MAPCOLOR9 || 1) - 1; // MAPCOLOR9 is 1-indexed
             return {
-              fillColor: getColorForCountry(name),
-              weight: 0.3,       // Very thin borders
-              opacity: 0.2,      // Very transparent borders
-              color: '#94a3b8',  
-              fillOpacity: mapMode === 'atlas' ? 0.70 : 0,  // Much more transparent
+              fillColor: colors[colorIndex],
+              weight: 1,
+              opacity: 1,
+              color: '#ffffff',
+              fillOpacity: mapMode === 'atlas' ? 1.0 : 0,
               smoothFactor: 1.0
             };
           },
-          pane: 'tilePane'  // Put in tile pane to keep under labels
+          pane: 'tilePane'
         }).addTo(map);
       })
       .catch(err => {
         console.warn('Failed to load Natural Earth GeoJSON:', err);
       });
 
-      // Hide Atlas colors when zoomed in beyond level 10
+      // Parse ocean RGB from CSS variable for alpha fade and lake fills
+    const oceanVar = getComputedStyle(document.documentElement).getPropertyValue('--atlas-ocean').trim();
+    const oceanMatch = oceanVar.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    const oceanRGB = oceanMatch ? `${oceanMatch[1]}, ${oceanMatch[2]}, ${oceanMatch[3]}` : '135, 195, 235';
+    const oceanHex = oceanMatch
+      ? '#' + [oceanMatch[1], oceanMatch[2], oceanMatch[3]].map(c => parseInt(c).toString(16).padStart(2, '0')).join('')
+      : '#87c3eb';
+
+    // Lakes pane above country fills but below labels
+    map.createPane('atlasLakes');
+    map.getPane('atlasLakes').style.zIndex = 450;
+    map.getPane('atlasLakes').style.pointerEvents = 'none';
+
+    // Load Natural Earth lakes to overlay on top of country fills
+    fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson')
+      .then(response => response.json())
+      .then(lakesData => {
+        geoJsonLakesRef.current = L.geoJson(lakesData, {
+          style: () => ({
+            fillColor: oceanHex,
+            fillOpacity: mapMode === 'atlas' ? 1 : 0,
+            weight: 1,
+            opacity: mapMode === 'atlas' ? 1 : 0,
+            color: '#ffffff',
+            smoothFactor: 1.0
+          }),
+          pane: 'atlasLakes'
+        }).addTo(map);
+      })
+      .catch(err => {
+        console.warn('Failed to load Natural Earth lakes GeoJSON:', err);
+      });
+
+      // Fade Atlas overlays as zoom increases
     map.on('zoomend', () => {
       if (mapModeRef.current === 'atlas' && geoJsonLayerRef.current) {
-        const currentZoom = map.getZoom();
-        if (currentZoom >= 10) {
-          geoJsonLayerRef.current.setStyle({ fillOpacity: 0 });
+        const z = map.getZoom();
+
+        // Fill: 1.00 at zoom ≤7, linear fade to 0.00 at zoom 15, stays 0 after
+        let fillOpacity;
+        if (z <= 7) fillOpacity = 1.0;
+        else if (z >= 15) fillOpacity = 0;
+        else fillOpacity = 1.0 - (z - 7) / (15 - 7);
+
+        // Stroke: 1 through zoom 15, then 0
+        const strokeOpacity = z < 16 ? 1 : 0;
+
+        // Ocean: 0.85 through zoom 15, then 0
+        const oceanAlpha = z < 16 ? 0.85 : 0;
+
+        geoJsonLayerRef.current.setStyle({ fillOpacity, opacity: strokeOpacity });
+        if (geoJsonLakesRef.current) {
+          geoJsonLakesRef.current.setStyle({ fillOpacity, opacity: strokeOpacity });
+        }
+
+        if (oceanAlpha > 0) {
+          map.getContainer().style.backgroundColor = `rgba(${oceanRGB}, ${oceanAlpha.toFixed(2)})`;
         } else {
-          geoJsonLayerRef.current.setStyle({ fillOpacity: 0.7 });
+          map.getContainer().style.backgroundColor = '';
+        }
+
+        setDebugOpacity({ fill: fillOpacity.toFixed(2), stroke: strokeOpacity.toFixed(2), ocean: oceanAlpha.toFixed(2) });
+
+        // Swap base tile in once fill starts fading, remove when fully opaque
+        if (z > 7) {
+          if (atlasBaseLayerRef.current && !map.hasLayer(atlasBaseLayerRef.current)) {
+            atlasBaseLayerRef.current.addTo(map);
+          }
+        } else {
+          if (atlasBaseLayerRef.current && map.hasLayer(atlasBaseLayerRef.current)) {
+            map.removeLayer(atlasBaseLayerRef.current);
+          }
         }
       }
     });
@@ -517,20 +579,31 @@ mapRef.current = map;
     const roadLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
     const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
 
-    const layers = { atlas: atlasLayer, road: roadLayer, terrain: terrainLayer };
-    layers[mapMode].addTo(map);
-    
+    // Atlas mode: no base tile at zoomed-out, blue background shows as ocean
+    if (mapMode === 'atlas') {
+      atlasBaseLayerRef.current = atlasLayer;
+      map.getContainer().style.backgroundColor = 'var(--atlas-ocean)';
+      // Add base tile only if already zoomed in
+      if (map.getZoom() >= 10) {
+        atlasLayer.addTo(map);
+        map.getContainer().style.backgroundColor = '';
+      }
+    } else {
+      map.getContainer().style.backgroundColor = '';
+      const layers = { road: roadLayer, terrain: terrainLayer };
+      layers[mapMode].addTo(map);
+    }
+
     // Manage labels and country colors based on map mode
     if (mapMode === 'atlas') {
       if (mapLabelsLayerRef.current) {
         mapLabelsLayerRef.current.addTo(map);
       }
       if (geoJsonLayerRef.current) {
-        geoJsonLayerRef.current.setStyle({ 
-          fillOpacity: 0.35,  // Much more transparent
-          weight: 0.3,        // Very thin borders
-          opacity: 0.2        // Very transparent borders
-        });
+        geoJsonLayerRef.current.setStyle({ fillOpacity: 1.0, weight: 1, opacity: 1 });
+      }
+      if (geoJsonLakesRef.current) {
+        geoJsonLakesRef.current.setStyle({ fillOpacity: 1.0, opacity: 1 });
       }
     } else {
       if (mapLabelsLayerRef.current && map.hasLayer(mapLabelsLayerRef.current)) {
@@ -538,6 +611,9 @@ mapRef.current = map;
       }
       if (geoJsonLayerRef.current) {
         geoJsonLayerRef.current.setStyle({ fillOpacity: 0, weight: 0, opacity: 0 });
+      }
+      if (geoJsonLakesRef.current) {
+        geoJsonLakesRef.current.setStyle({ fillOpacity: 0, opacity: 0 });
       }
     }
   }, [mapMode]);
@@ -616,6 +692,8 @@ mapRef.current = map;
   useEffect(() => {
     if (!mapRef.current || !routesLayerRef.current || !routeLabelsLayerRef.current) return;
     const L = window.L;
+    const selectionChanged = prevSelectionRef.current !== selectedTimelineItem?.id;
+    prevSelectionRef.current = selectedTimelineItem?.id;
 
     routesLayerRef.current.clearLayers();
     routeLabelsLayerRef.current.clearLayers();
@@ -720,11 +798,7 @@ mapRef.current = map;
         const modeIconKey = route.mode === 'flight' ? 'flight' : route.mode === 'train' ? 'train' : 'drive';
         const labelIcon = L.divIcon({
           html: `
-            <div style="background: white; padding: 8px 16px; border-radius: 20px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold;
-                        color: ${colorMap[route.mode]}; border: 2px solid ${colorMap[route.mode]};
-                        white-space: nowrap; font-size: 13px;
-                        transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px;">
+            <div class="map-label map-label--route" style="--label-color: ${colorMap[route.mode]}">
               ${getIconHtml(modeIconKey, colorMap[route.mode], 18)}
               <span>${route.travelTime}</span>
             </div>
@@ -737,8 +811,8 @@ mapRef.current = map;
         L.marker(midPoint, { icon: labelIcon }).addTo(routeLabelsLayerRef.current);
       }
       
-      // Zoom to route bounds when selected
-      if (isSelected) {
+      // Zoom to route bounds only when selection changes (not on map mode switch)
+      if (isSelected && selectionChanged) {
         const bounds = L.latLngBounds(coords);
         mapRef.current.flyToBounds(bounds, { padding: [80, 80], duration: 1.5 });
       }
@@ -762,7 +836,7 @@ mapRef.current = map;
       
       // Different pin styles for home vs destinations
       const pinSvg = step.isHome ? `
-        <svg width="34.56" height="34.56" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg width="35" height="35" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <rect x="0" y="0" width="24" height="24" rx="12" 
                 fill="${isSelected ? COLORS.home : '#94a3b8'}" 
                 stroke="white" 
@@ -772,16 +846,16 @@ mapRef.current = map;
                 transform="translate(0, 1)"/>
         </svg>
       ` : `
-        <svg width="34.56" height="43.2" viewBox="0 0 28.8 36" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14.4 0C6.45 0 0 6.45 0 14.4c0 10.8 14.4 21.6 14.4 21.6s14.4-10.8 14.4-21.6C28.8 6.45 22.35 0 14.4 0z" 
-                fill="${isSelected ? COLORS.primary : '#94a3b8'}" 
-                stroke="white" 
+        <svg width="35" height="43" viewBox="0 0 28.8 36" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14.4 0C6.45 0 0 6.45 0 14.4c0 10.8 14.4 21.6 14.4 21.6s14.4-10.8 14.4-21.6C28.8 6.45 22.35 0 14.4 0z"
+                fill="${isSelected ? COLORS.primary : '#94a3b8'}"
+                stroke="white"
                 stroke-width="1.5"/>
-          <text x="14.4" y="16" 
-                text-anchor="middle" 
+          <text x="14.4" y="16"
+                text-anchor="middle"
                 dominant-baseline="middle"
-                font-size="${step.destinationNumber >= 10 ? '10.8' : '11.6'}" 
-                font-weight="bold" 
+                font-size="${step.destinationNumber >= 10 ? '11' : '12'}"
+                font-weight="bold"
                 fill="white">${step.destinationNumber}</text>
         </svg>
       `;
@@ -789,8 +863,8 @@ mapRef.current = map;
       const icon = L.divIcon({
         html: pinSvg,
         className: 'custom-pin',
-        iconSize: step.isHome ? [34.56, 34.56] : [34.56, 43.2],
-        iconAnchor: step.isHome ? [17.28, 17.28] : [17.28, 43.2]
+        iconSize: step.isHome ? [35, 35] : [35, 43],
+        iconAnchor: step.isHome ? [17, 18] : [17, 43]
       });
       
       const marker = L.marker(step.coords, { icon });
@@ -810,10 +884,7 @@ mapRef.current = map;
         const lodgingIconKey = getLodgingIconType(step.lodgingCategory);
         const labelIcon = L.divIcon({
           html: `
-            <div style="background: white; padding: 8px 16px; border-radius: 20px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold;
-                        color: ${COLORS.primary}; border: 2px solid ${COLORS.primary};
-                        white-space: nowrap; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+            <div class="map-label" style="--label-color: ${COLORS.primary}">
               ${getIconHtml(lodgingIconKey, COLORS.primary, 18)}
               <span>${step.lodging}</span>
             </div>
@@ -852,7 +923,7 @@ mapRef.current = map;
         const isActivitySelected = selectedActivityId === activity.id;
 
         const activityPinSvg = `
-          <svg width="17.28" height="21.6" viewBox="0 0 28.8 36" xmlns="http://www.w3.org/2000/svg">
+          <svg width="17" height="22" viewBox="0 0 28.8 36" xmlns="http://www.w3.org/2000/svg">
             <path d="M14.4 0C6.45 0 0 6.45 0 14.4c0 10.8 14.4 21.6 14.4 21.6s14.4-10.8 14.4-21.6C28.8 6.45 22.35 0 14.4 0z"
                   fill="${isActivitySelected ? COLORS.activity : COLORS.activityMuted}"
                   stroke="white"
@@ -863,8 +934,8 @@ mapRef.current = map;
         const activityIcon = L.divIcon({
           html: activityPinSvg,
           className: 'custom-pin',
-          iconSize: [17.28, 21.6],
-          iconAnchor: [8.64, 21.6]
+          iconSize: [17, 22],
+          iconAnchor: [9, 22]
         });
 
         const marker = L.marker(activity.coords, { icon: activityIcon });
@@ -876,10 +947,7 @@ mapRef.current = map;
           const activityIconKey = getActivityIconType(activity.category);
           const labelIcon = L.divIcon({
             html: `
-              <div style="background: white; padding: 6px 12px; border-radius: 16px;
-                          box-shadow: 0 3px 10px rgba(0,0,0,0.12); font-weight: bold;
-                          color: ${COLORS.activity}; border: 2px solid ${COLORS.activity};
-                          white-space: nowrap; font-size: 11px; display: flex; align-items: center; gap: 6px;">
+              <div class="map-label map-label--activity" style="--label-color: ${COLORS.activity}">
                 ${getIconHtml(activityIconKey, COLORS.activity, 16)}
                 <span>${activity.name}</span>
               </div>
@@ -898,9 +966,18 @@ mapRef.current = map;
 
   }, [selectedId, selectedTimelineItem, onSelect, selectedActivityId, onActivitySelect, activities, currentZoom]);
 
-  // Separate effect for zoom - only triggers when selection changes, not when zoom changes
+  // Separate effect for zoom - only triggers when selection actually changes via user interaction
+  const prevZoomSelectionRef = useRef({ selectedId, selectedActivityId, timelineId: selectedTimelineItem?.id });
   useEffect(() => {
     if (!mapRef.current) return;
+
+    const prev = prevZoomSelectionRef.current;
+    const curTimelineId = selectedTimelineItem?.id;
+    const changed = prev.selectedId !== selectedId || prev.selectedActivityId !== selectedActivityId || prev.timelineId !== curTimelineId;
+    prevZoomSelectionRef.current = { selectedId, selectedActivityId, timelineId: curTimelineId };
+
+    // Skip if nothing actually changed (initial mount, re-renders, etc.)
+    if (!changed) return;
 
     // Zoom to activity when activity is selected
     if (selectedActivityId) {
@@ -924,7 +1001,18 @@ mapRef.current = map;
     }
   }, [selectedId, selectedTimelineItem, selectedActivityId]);
 
-  return <div id="map" className="w-full h-full" />;
+  return (
+    <>
+      <div id="map" className="w-full h-full" />
+      {/* Debug: Zoom & Opacity */}
+      <div className="absolute bottom-24 right-8 p-3 bg-black/75 text-white text-xs font-mono rounded-lg z-[1000] leading-relaxed">
+        <div>Zoom: {currentZoom ?? '–'}</div>
+        <div>Fill: {debugOpacity.fill}</div>
+        <div>Stroke: {debugOpacity.stroke}</div>
+        <div>Ocean: {debugOpacity.ocean}</div>
+      </div>
+    </>
+  );
 };
 
 // Maps activity category string to an ICONS key (for both React and Leaflet label usage)
@@ -1171,17 +1259,17 @@ const baseColor = item.isHome ? COLORS.home : (item.type === 'stay' ? COLORS.pri
                       left: `${startX + 32 + 1}px`,
                       top: '82px',
                       width: `${displayWidth}px`,
-                      height: '25.6px',
-                      padding: '0 9.6px',
+                      height: '26px',
+                      padding: '0 10px',
                       backgroundColor: isSelected ? COLORS.activity : COLORS.activityMuted,
                       color: isSelected ? '#fff' : '#78350f',
                       zIndex: isSelected ? 25 : 15,
                     }}
                   >
-                    <div className="flex items-center" style={{ gap: '6px' }}>
+                    <div className="flex items-center gap-1.5">
                       {getActivityIcon(activity.category, 11)}
                       {displayWidth > 60 && (
-                        <span className="font-bold truncate" style={{ fontSize: '9.6px' }}>{activity.name}</span>
+                        <span className="font-bold truncate text-[10px]">{activity.name}</span>
                       )}
                     </div>
                   </button>
@@ -1254,18 +1342,6 @@ const App = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-white overflow-hidden font-sans text-slate-900">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap');
-        .font-serif { font-family: 'Playfair Display', serif; }
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .route-selected { filter: drop-shadow(0 0 8px rgba(0,0,0,0.4)); }
-        .custom-pin { background: none !important; border: none !important; }
-        .lodging-label { background: none !important; border: none !important; }
-        .route-label { background: none !important; border: none !important; }
-      `}</style>
-
       <Timeline
         selectedId={selectedTimelineId}
         onSelect={handleTimelineSelect}

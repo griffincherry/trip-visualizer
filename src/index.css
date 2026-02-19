@@ -1,6 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ================================================================
+   COLOR PALETTE
+   Edit the hex values here to change colors throughout the app.
+   ================================================================ */
+:root {
+  --color-primary:        #5a2d5a;   /* Purple — destination pins, lodging labels, primary UI */
+  --color-primary-light:  #f6f0f6;   /* Light purple — backgrounds */
+  --color-flight:         #4775d1;   /* Blue — flight routes */
+  --color-flight-muted:   #7a95d9;   /* Muted blue — unselected flight routes */
+  --color-train:          #46a384;   /* Green — train routes */
+  --color-train-muted:    #6bb89d;   /* Muted green — unselected train routes */
+  --color-drive:          #cc5c5c;   /* Red — driving routes */
+  --color-drive-muted:    #d97a7a;   /* Muted red — unselected driving routes */
+  --color-home:           #8b5a8b;   /* Purple (lighter) — home pin when selected */
+  --color-activity:       #f59e0b;   /* Amber — activity pins, pills, labels */
+  --color-activity-muted: #fbbf24;   /* Muted amber — unselected activity pins */
+  --color-activity-light: #fef3c7;   /* Light amber — activity card background */
+
+  /* Atlas mode — country fill colors */
+  --atlas-color-1:  #f1caa4;  /* warm orange */
+  --atlas-color-2:  #a6d6d0;  /* soft teal */
+  --atlas-color-3:  #c0ddbb;  /* sage green */
+  --atlas-color-4:  #f4de9e;  /* golden yellow */
+  --atlas-color-5:  #edc3c5;  /* dusty rose */
+  --atlas-color-6:  #c9d0d4;  /* cool gray */
+  --atlas-color-7:  #f4dcc2;  /* warm peach */
+  --atlas-color-8:  #d5e4be;  /* yellow-green */
+  --atlas-color-9:  #ddcde0;  /* soft lavender */
+  --atlas-ocean:    rgba(135, 195, 235, 1);  /* ocean blue background */
+}
 
 * {
   margin: 0;
@@ -20,4 +53,77 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+}
+
+/* ================================================================
+   TYPOGRAPHY
+   ================================================================ */
+.font-serif {
+  font-family: 'Playfair Display', serif;
+}
+
+/* ================================================================
+   SCROLLBAR
+   ================================================================ */
+.custom-scrollbar::-webkit-scrollbar        { height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track  { background: transparent; }
+
+/* ================================================================
+   MAP — LEAFLET OVERRIDES
+   ================================================================ */
+
+/* Suppress default Leaflet divIcon box styling */
+.custom-pin,
+.lodging-label,
+.route-label {
+  background: none !important;
+  border: none !important;
+}
+
+/* Drop-shadow applied to selected route polylines */
+.route-selected {
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+}
+
+/* ================================================================
+   MAP — LABEL PILLS (route travel time, lodging, activity)
+   Uses --label-color CSS variable for dynamic per-instance color.
+   ================================================================ */
+.map-label {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-weight: bold;
+  white-space: nowrap;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 2px solid var(--label-color, #000);
+  color: var(--label-color, #000);
+}
+
+/* Smaller variant used for activity labels */
+.map-label--activity {
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+/* Route label needs centering since anchor is [0,0] */
+.map-label--route {
+  transform: translate(-50%, -50%);
+}
+
+/* ================================================================
+   ICONS — MATERIAL SYMBOLS BASE STYLES
+   Applied to both React <Icon> components and Leaflet HTML icons.
+   ================================================================ */
+.map-icon {
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
 }
