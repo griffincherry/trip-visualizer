@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getLocationById, getHomeLocation } from './locations.js';
+import { fetchAllTripData, getLocationById, getHomeLocation } from './services/airtableService';
 
 // ================================================================
 // ICON DEFINITIONS
@@ -86,178 +86,15 @@ const COLORS = {
   activityLight:  '#fef3c7',
 };
 
-// Trip metadata
-const homeLocation = getHomeLocation();
-const airportLocation = getLocationById('airport-halifax');
-const TRIP_METADATA = {
-  homeAddress: homeLocation.address,
-  homeCoords: homeLocation.coords,
-  homeName: homeLocation.name,
-  airportAddress: airportLocation.address,
-  airportCoords: airportLocation.coords,
-  tripStart: new Date('2026-08-01T00:00:00'),
-  tripEnd: new Date('2026-08-27T23:59:59')
-};
 
-// Base lodging data with location references
-const lodgingStepsBase = [
-  { date: "Jul 31", locationId: 'home-wolfville', lodgingCategory: 'home', mode: 'home', isDestination: false, isHome: true },
-  { date: "Aug 1", locationId: 'airport-halifax', lodgingCategory: 'airport', mode: 'flight', isDestination: false },
-  { date: "Aug 2-3", locationId: 'lodging-thehague', lodgingCategory: 'apartment', mode: 'train', isDestination: true, destinationNumber: 1 },
-  { date: "Aug 4-6", locationId: 'lodging-ghent', lodgingCategory: 'apartment', mode: 'train', isDestination: true, destinationNumber: 2 },
-  { date: "Aug 7", locationId: 'lodging-koblenz', lodgingCategory: 'apartment', mode: 'train', isDestination: true, destinationNumber: 3 },
-  { date: "Aug 9", locationId: 'lodging-salzburg', lodgingCategory: 'hostel', mode: 'train', isDestination: true, destinationNumber: 4 },
-  { date: "Aug 10", locationId: 'lodging-drazice', lodgingCategory: 'apartment', mode: 'drive', isDestination: true, destinationNumber: 5 },
-  { date: "Aug 11-12", locationId: 'lodging-plitvice', lodgingCategory: 'apartment', mode: 'drive', isDestination: true, destinationNumber: 6 },
-  { date: "Aug 13-15", locationId: 'lodging-mojstrana', lodgingCategory: 'apartment', mode: 'drive', isDestination: true, destinationNumber: 7 },
-  { date: "Aug 16-17", locationId: 'lodging-mostnasoci', lodgingCategory: 'apartment', mode: 'drive', isDestination: true, destinationNumber: 8 },
-  { date: "Aug 18-20", locationId: 'lodging-vizinada', lodgingCategory: 'house', mode: 'drive', isDestination: true, destinationNumber: 9 },
-  { date: "Aug 21", locationId: 'lodging-venice', lodgingCategory: 'apartment', mode: 'train', isDestination: true, destinationNumber: 10 },
-  { date: "Aug 22-24", locationId: 'lodging-volastra', lodgingCategory: 'house', mode: 'train', isDestination: true, destinationNumber: 11 },
-  { date: "Aug 25", locationId: 'lodging-lucca', lodgingCategory: 'house', mode: 'train', isDestination: true, destinationNumber: 12 },
-  { date: "Aug 26", locationId: 'lodging-reykjavik', lodgingCategory: 'apartment', mode: 'flight', isDestination: true, destinationNumber: 13 },
-  { date: "Aug 27", locationId: 'airport-halifax', lodgingCategory: 'airport', mode: 'flight', isDestination: false },
-  { date: "Aug 27", locationId: 'home-wolfville', lodgingCategory: 'home', mode: 'home', isDestination: false, isHome: true }
-];
-
-// Enrich with location data from locations.js
-const lodgingSteps = lodgingStepsBase.map(step => {
-  const location = getLocationById(step.locationId);
-  return {
-    ...step,
-    city: location.city,
-    lodging: location.name,
-    address: location.address,
-    coords: location.coords,
-    country: location.country
-  };
-});
-
-// Base activities with location references
-const activitiesBase = [
-  {
-    id: 'act-1',
-    locationId: 'activity-mauritshuis',
-    parentStepIndex: 2,
-    startTime: '2026-08-02T15:00:00',
-    endTime: '2026-08-02T17:00:00',
-    description: 'Visit the famous Girl with a Pearl Earring'
-  },
-  {
-    id: 'act-2',
-    locationId: 'activity-gravensteen',
-    parentStepIndex: 3,
-    startTime: '2026-08-05T10:00:00',
-    endTime: '2026-08-05T12:00:00',
-    description: 'Medieval castle in the heart of Ghent'
-  },
-  {
-    id: 'act-3',
-    locationId: 'activity-plitvice-lakes',
-    parentStepIndex: 7,
-    startTime: '2026-08-11T14:00:00',
-    endTime: '2026-08-11T18:00:00',
-    description: 'Explore the stunning waterfalls and turquoise lakes'
-  },
-  {
-    id: 'act-4',
-    locationId: 'activity-triglav',
-    parentStepIndex: 8,
-    startTime: '2026-08-14T06:00:00',
-    endTime: '2026-08-14T17:00:00',
-    description: 'Climb Slovenia\'s highest peak'
-  },
-  {
-    id: 'act-5',
-    locationId: 'activity-truffle-tour',
-    parentStepIndex: 10,
-    startTime: '2026-08-19T09:00:00',
-    endTime: '2026-08-19T12:00:00',
-    description: 'Hunt for truffles in the Istrian countryside'
-  },
-  {
-    id: 'act-6',
-    locationId: 'activity-cinque-terre-trail',
-    parentStepIndex: 12,
-    startTime: '2026-08-23T08:00:00',
-    endTime: '2026-08-23T15:00:00',
-    description: 'Hike the famous trail connecting the five villages'
-  },
-  {
-    id: 'act-7',
-    locationId: 'activity-blue-lagoon',
-    parentStepIndex: 14,
-    startTime: '2026-08-26T20:00:00',
-    endTime: '2026-08-26T22:00:00',
-    description: 'Relax in the geothermal spa'
-  },
-  {
-    id: 'act-8',
-    locationId: 'waypoint-senj',
-    parentTransitId: 'transit-7',
-    startTime: '2026-08-11T10:30:00',
-    endTime: '2026-08-11T11:00:00',
-    description: 'Coastal lunch stop along the scenic drive'
-  }
-];
-
-// Enrich with location data from locations.js
-const activities = activitiesBase.map(activity => {
-  const location = getLocationById(activity.locationId);
-  return {
-    ...activity,
-    name: location.name,
-    category: location.category || 'general',
-    coords: location.coords
-  };
-});
-
-// Base transit routes with location references
-const transitRoutesBase = [
-  { id: 'home-halifax', mode: 'drive', fromLocationId: 'home-wolfville', toLocationId: 'airport-halifax', waypointIds: [], travelTime: '1h 15m' },
-  { id: 'halifax-thehague', mode: 'flight', fromLocationId: 'airport-halifax', toLocationId: 'lodging-thehague', waypointIds: [], travelTime: '7h 20m' },
-  { id: 'thehague-ghent', mode: 'train', fromLocationId: 'station-thehague', toLocationId: 'station-ghent', waypointIds: ['station-antwerp'], travelTime: '2h 15m' },
-  { id: 'ghent-koblenz', mode: 'train', fromLocationId: 'station-ghent', toLocationId: 'station-koblenz', waypointIds: ['station-brussels', 'station-cologne'], travelTime: '5h 30m' },
-  { id: 'koblenz-salzburg', mode: 'train', fromLocationId: 'station-koblenz', toLocationId: 'station-salzburg', waypointIds: [], travelTime: '9h 45m' },
-  { id: 'salzburg-trieste', mode: 'train', fromLocationId: 'station-salzburg', toLocationId: 'station-trieste', waypointIds: [], travelTime: '4h 30m' },
-  { id: 'trieste-drazice', mode: 'drive', fromLocationId: 'station-trieste', toLocationId: 'lodging-drazice', waypointIds: [], travelTime: '1h 15m' },
-  { id: 'drazice-plitvice', mode: 'drive', fromLocationId: 'lodging-drazice', toLocationId: 'lodging-plitvice', waypointIds: [], travelTime: '1h 15m' },
-  { id: 'plitvice-mojstrana', mode: 'drive', fromLocationId: 'lodging-plitvice', toLocationId: 'lodging-mojstrana', waypointIds: [], travelTime: '3h 45m' },
-  { id: 'mojstrana-mostnasoci', mode: 'drive', fromLocationId: 'lodging-mojstrana', toLocationId: 'lodging-mostnasoci', waypointIds: ['waypoint-vrsic'], travelTime: '1h 30m' },
-  { id: 'mostnasoci-vizinada', mode: 'drive', fromLocationId: 'lodging-mostnasoci', toLocationId: 'lodging-vizinada', waypointIds: [], travelTime: '2h 45m' },
-  { id: 'vizinada-trieste', mode: 'drive', fromLocationId: 'lodging-vizinada', toLocationId: 'station-trieste', waypointIds: [], travelTime: '1h 30m' },
-  { id: 'trieste-venice', mode: 'train', fromLocationId: 'station-trieste', toLocationId: 'station-venice', waypointIds: [], travelTime: '2h 00m' },
-  { id: 'venice-volastra', mode: 'train', fromLocationId: 'station-venice', toLocationId: 'station-laspezia', waypointIds: [], travelTime: '4h 30m' },
-  { id: 'volastra-lucca', mode: 'train', fromLocationId: 'station-laspezia', toLocationId: 'lodging-lucca', waypointIds: [], travelTime: '2h 15m' },
-  { id: 'lucca-rome', mode: 'train', fromLocationId: 'lodging-lucca', toLocationId: 'airport-rome', waypointIds: [], travelTime: '4h 00m' },
-  { id: 'rome-reykjavik', mode: 'flight', fromLocationId: 'airport-rome', toLocationId: 'airport-keflavik', waypointIds: [], travelTime: '6h 00m' },
-  { id: 'reykjavik-halifax', mode: 'flight', fromLocationId: 'airport-keflavik', toLocationId: 'airport-halifax', waypointIds: [], travelTime: '4h 45m' },
-  { id: 'halifax-home', mode: 'drive', fromLocationId: 'airport-halifax', toLocationId: 'home-wolfville', waypointIds: [], travelTime: '1h 15m' }
-];
-
-// Enrich with coordinate data from locations.js
-const transitRoutes = transitRoutesBase.map(route => {
-  const fromLocation = getLocationById(route.fromLocationId);
-  const toLocation = getLocationById(route.toLocationId);
-  const waypoints = route.waypointIds.map(id => getLocationById(id).coords);
-
-  return {
-    ...route,
-    fromCoords: fromLocation.coords,
-    toCoords: toLocation.coords,
-    waypoints
-  };
-});
-
-// Generate timeline items
-const generateTimelineItems = () => {
-  const items = [];
+// Generate timeline items from loaded data
+const generateTimelineItems = (transitRoutes, TRIP_METADATA) => {
   const transitRouteLookup = {};
-  
+
   transitRoutes.forEach(route => {
     transitRouteLookup[route.id] = route;
   });
-  
+
   const timelineData = [
   { id: 'stay-0', type: 'stay', city: 'Wolfville', label: TRIP_METADATA.homeName, start: '2026-07-31T00:00:00', end: '2026-08-01T08:00:00', coords: TRIP_METADATA.homeCoords, country: 'Canada', stepIndex: 0, isHome: true },
   { id: 'transit-0', type: 'transit', mode: 'drive', label: 'To Airport', start: '2026-08-01T08:00:00', end: '2026-08-01T09:15:00', routeId: 'home-halifax', stepIndex: 0 },
@@ -296,7 +133,7 @@ const generateTimelineItems = () => {
   { id: 'transit-18', type: 'transit', mode: 'drive', label: 'Home', start: '2026-08-27T17:00:00', end: '2026-08-27T18:15:00', routeId: 'halifax-home', stepIndex: 15 },
   { id: 'stay-16', type: 'stay', city: 'Wolfville', label: TRIP_METADATA.homeName, start: '2026-08-27T18:15:00', end: '2026-08-27T23:59:59', coords: TRIP_METADATA.homeCoords, country: 'Canada', stepIndex: 16, isHome: true },
 ];
-  
+
   return timelineData.map(item => {
     if (item.type === 'transit' && item.routeId) {
       return {
@@ -313,8 +150,6 @@ const generateTimelineItems = () => {
     };
   });
 };
-
-const timelineItems = generateTimelineItems();
 
 // Utility functions
 const createBezierCurve = (from, to, segments = 50) => {
@@ -338,7 +173,7 @@ const createBezierCurve = (from, to, segments = 50) => {
 };
 
 // MapComponent with Natural Earth GeoJSON and OpenRailRouting with debugging
-const MapComponent = ({ selectedId, onSelect, mapMode, selectedTimelineItem, detailsMinimized, handleTimelineSelect, selectedActivityId, onActivitySelect, activities }) => {
+const MapComponent = ({ selectedId, onSelect, mapMode, selectedTimelineItem, detailsMinimized, handleTimelineSelect, selectedActivityId, onActivitySelect, activities, lodgingSteps, transitRoutes, TRIP_METADATA, timelineItems }) => {
   const mapRef = useRef(null);
   const markersLayerRef = useRef(null);
   const routesLayerRef = useRef(null);
@@ -1004,13 +839,14 @@ mapRef.current = map;
   return (
     <>
       <div id="map" className="w-full h-full" />
-      {/* Debug: Zoom & Opacity */}
+      {/* Debug: Zoom & Opacity (uncomment to re-enable)
       <div className="absolute bottom-24 right-8 p-3 bg-black/75 text-white text-xs font-mono rounded-lg z-[1000] leading-relaxed">
         <div>Zoom: {currentZoom ?? '–'}</div>
         <div>Fill: {debugOpacity.fill}</div>
         <div>Stroke: {debugOpacity.stroke}</div>
         <div>Ocean: {debugOpacity.ocean}</div>
       </div>
+      */}
     </>
   );
 };
@@ -1092,7 +928,7 @@ const getLodgingIcon = (category, size = 14) => (
 );
 
 // Timeline Component
-const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId, onActivitySelect }) => {
+const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId, onActivitySelect, lodgingSteps, timelineItems, activities }) => {
   const scrollRef = useRef(null);
   const tripStart = new Date('2026-07-31T00:00:00');
   const tripEnd = new Date('2026-08-27T23:59:59');
@@ -1283,12 +1119,101 @@ const baseColor = item.isHome ? COLORS.home : (item.type === 'stay' ? COLORS.pri
 };
 
 const App = () => {
+  // All hooks must be declared before any early returns (React rules of hooks)
+  const [tripData, setTripData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedIdx, setSelectedIdx] = useState(1);
   const [selectedTimelineId, setSelectedTimelineId] = useState('stay-1');
   const [selectedActivityId, setSelectedActivityId] = useState(null);
   const [mapMode, setMapMode] = useState('atlas');
   const [detailsMinimized, setDetailsMinimized] = useState(false);
-  
+
+  // Load data on mount
+  useEffect(() => {
+    loadTripData();
+  }, []);
+
+  const loadTripData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAllTripData();
+      setTripData(data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading trip data:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="text-center">
+          <div className="text-lg font-bold text-slate-700 mb-2">Loading trip data...</div>
+          <div className="text-sm text-slate-500">Fetching from Airtable</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="text-center max-w-md p-8">
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Error Loading Trip Data</h2>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <button
+            onClick={loadTripData}
+            className="px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No data loaded
+  if (!tripData) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="text-center">
+          <p className="text-slate-600">No trip data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract data from tripData
+  const { locations, tripSteps, routes, activities } = tripData;
+
+  // Set up location helpers with loaded data
+  const homeLoc = getHomeLocation(locations);
+  const airportLoc = getLocationById(locations, 'airport-halifax');
+
+  // Set up TRIP_METADATA from loaded data
+  const TRIP_METADATA = {
+    homeAddress: homeLoc?.address || '',
+    homeCoords: homeLoc?.coords || [0, 0],
+    homeName: homeLoc?.name || 'Home',
+    airportAddress: airportLoc?.address || '',
+    airportCoords: airportLoc?.coords || [0, 0],
+    tripStart: new Date('2026-08-01T00:00:00'),
+    tripEnd: new Date('2026-08-27T23:59:59')
+  };
+
+  // Use enriched data from Airtable (same structure as before)
+  const lodgingSteps = tripSteps;
+  const transitRoutes = routes;
+
+  // Generate timeline items from loaded data
+  const timelineItems = generateTimelineItems(transitRoutes, TRIP_METADATA);
+
   const currentStep = lodgingSteps[selectedIdx];
   const currentItem = timelineItems.find(item => item.id === selectedTimelineId);
     
@@ -1348,6 +1273,9 @@ const App = () => {
         lodgingSelectedId={selectedIdx}
         selectedActivityId={selectedActivityId}
         onActivitySelect={handleActivitySelect}
+        lodgingSteps={lodgingSteps}
+        timelineItems={timelineItems}
+        activities={activities}
       />
 
       <div className="flex-1 relative">
@@ -1361,6 +1289,10 @@ const App = () => {
           selectedActivityId={selectedActivityId}
           onActivitySelect={handleActivitySelect}
           activities={activities}
+          lodgingSteps={lodgingSteps}
+          transitRoutes={transitRoutes}
+          TRIP_METADATA={TRIP_METADATA}
+          timelineItems={timelineItems}
         />
 
         {/* Map Mode Toggle - Bottom Right */}
