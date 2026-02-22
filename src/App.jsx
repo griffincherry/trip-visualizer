@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchAllTripData, getLocationById, getHomeLocation } from './services/airtableService';
+import {
+  fetchAllTripData,
+  getLocationById,
+  getHomeLocation,
+  linkRoutesToSteps,
+  generateTimelineFromSteps,
+  formatTravelTime
+} from './services/airtableService';
 
 // ================================================================
 // ICON DEFINITIONS
@@ -87,60 +94,29 @@ const COLORS = {
 };
 
 
-// Generate timeline items from loaded data
-const generateTimelineItems = (transitRoutes, TRIP_METADATA) => {
-  const transitRouteLookup = {};
+// Generate timeline items dynamically from Airtable data
+const generateTimelineItems = (transitRoutes, lodgingSteps, TRIP_METADATA) => {
+  // Link routes to steps so we know which route connects which steps
+  const linkedRoutes = linkRoutesToSteps(transitRoutes, lodgingSteps);
 
-  transitRoutes.forEach(route => {
+  // Generate timeline from trip data
+  const timelineData = generateTimelineFromSteps(lodgingSteps, linkedRoutes, TRIP_METADATA);
+
+  // Build lookup for routes
+  const transitRouteLookup = {};
+  linkedRoutes.forEach(route => {
     transitRouteLookup[route.id] = route;
   });
 
-  const timelineData = [
-  { id: 'stay-0', type: 'stay', city: 'Wolfville', label: TRIP_METADATA.homeName, start: '2026-07-31T00:00:00', end: '2026-08-01T08:00:00', coords: TRIP_METADATA.homeCoords, country: 'Canada', stepIndex: 0, isHome: true },
-  { id: 'transit-0', type: 'transit', mode: 'drive', label: 'To Airport', start: '2026-08-01T08:00:00', end: '2026-08-01T09:15:00', routeId: 'home-halifax', stepIndex: 0 },
-  { id: 'stay-1', type: 'stay', city: 'Halifax', label: 'Airport', start: '2026-08-01T09:15:00', end: '2026-08-01T18:00:00', coords: [44.8807, -63.5086], country: 'Canada', stepIndex: 1 },
-  { id: 'transit-1', type: 'transit', mode: 'flight', label: 'Overnight Flight', start: '2026-08-01T18:00:00', end: '2026-08-02T14:00:00', routeId: 'halifax-thehague', stepIndex: 1 },
-  { id: 'stay-2', type: 'stay', city: 'The Hague', label: 'Apartement City Centre', start: '2026-08-02T14:00:00', end: '2026-08-04T10:00:00', coords: [52.0788, 4.3118], country: 'Netherlands', stepIndex: 2 },
-  { id: 'transit-2', type: 'transit', mode: 'train', label: 'To Ghent', start: '2026-08-04T10:00:00', end: '2026-08-04T14:00:00', routeId: 'thehague-ghent', stepIndex: 2 },
-  { id: 'stay-3', type: 'stay', city: 'Ghent', label: 'Apartment 202', start: '2026-08-04T14:00:00', end: '2026-08-07T10:00:00', coords: [51.0533, 3.7311], country: 'Belgium', stepIndex: 3 },
-  { id: 'transit-3', type: 'transit', mode: 'train', label: 'To Koblenz', start: '2026-08-07T10:00:00', end: '2026-08-07T16:00:00', routeId: 'ghent-koblenz', stepIndex: 3 },
-  { id: 'stay-4', type: 'stay', city: 'Koblenz', label: 'Schönes Apartment 4', start: '2026-08-07T16:00:00', end: '2026-08-08T18:00:00', coords: [50.3548, 7.5976], country: 'Germany', stepIndex: 4 },
-  { id: 'transit-4', type: 'transit', mode: 'train', label: 'Overnight Train', start: '2026-08-08T18:00:00', end: '2026-08-09T08:00:00', routeId: 'koblenz-salzburg', stepIndex: 4 },
-  { id: 'stay-5', type: 'stay', city: 'Salzburg', label: 'a&o Salzburg Hauptbahnhof', start: '2026-08-09T08:00:00', end: '2026-08-09T12:00:00', coords: [47.8137, 13.0461], country: 'Austria', stepIndex: 5 },
-  { id: 'transit-5', type: 'transit', mode: 'train', label: 'To Trieste', start: '2026-08-09T12:00:00', end: '2026-08-09T16:30:00', routeId: 'salzburg-trieste', stepIndex: 5 },
-  { id: 'transit-6', type: 'transit', mode: 'drive', label: 'To Dražice', start: '2026-08-09T16:30:00', end: '2026-08-09T17:45:00', routeId: 'trieste-drazice', stepIndex: 6 },
-  { id: 'stay-6', type: 'stay', city: 'Dražice', label: 'Apartman Dražice-Grobnik', start: '2026-08-09T17:45:00', end: '2026-08-11T10:00:00', coords: [45.3917, 14.5131], country: 'Croatia', stepIndex: 6 },
-  { id: 'transit-7', type: 'transit', mode: 'drive', label: 'To Plitvice', start: '2026-08-11T10:00:00', end: '2026-08-11T11:15:00', routeId: 'drazice-plitvice', stepIndex: 6 },
-  { id: 'stay-7', type: 'stay', city: 'Plitvice', label: 'Apartmani Brium', start: '2026-08-11T11:15:00', end: '2026-08-13T10:00:00', coords: [44.9153, 15.6179], country: 'Croatia', stepIndex: 7 },
-  { id: 'transit-8', type: 'transit', mode: 'drive', label: 'To Mojstrana', start: '2026-08-13T10:00:00', end: '2026-08-13T13:45:00', routeId: 'plitvice-mojstrana', stepIndex: 7 },
-  { id: 'stay-8', type: 'stay', city: 'Mojstrana', label: 'Apartma Lipa', start: '2026-08-13T13:45:00', end: '2026-08-16T10:00:00', coords: [46.4844, 13.9288], country: 'Slovenia', stepIndex: 8 },
-  { id: 'transit-9', type: 'transit', mode: 'drive', label: 'To Most na Soči', start: '2026-08-16T10:00:00', end: '2026-08-16T11:30:00', routeId: 'mojstrana-mostnasoci', stepIndex: 8 },
-  { id: 'stay-9', type: 'stay', city: 'Most na Soči', label: 'Apartment Mika', start: '2026-08-16T11:30:00', end: '2026-08-18T10:00:00', coords: [46.1897, 13.6618], country: 'Slovenia', stepIndex: 9 },
-  { id: 'transit-10', type: 'transit', mode: 'drive', label: 'To Vižinada', start: '2026-08-18T10:00:00', end: '2026-08-18T12:45:00', routeId: 'mostnasoci-vizinada', stepIndex: 9 },
-  { id: 'stay-10', type: 'stay', city: 'Vižinada', label: 'Nona Nina', start: '2026-08-18T12:45:00', end: '2026-08-21T10:00:00', coords: [45.3339, 13.7658], country: 'Croatia', stepIndex: 10 },
-  { id: 'transit-11', type: 'transit', mode: 'drive', label: 'To Trieste', start: '2026-08-21T10:00:00', end: '2026-08-21T11:30:00', routeId: 'vizinada-trieste', stepIndex: 10 },
-  { id: 'transit-12', type: 'transit', mode: 'train', label: 'To Venice', start: '2026-08-21T11:30:00', end: '2026-08-21T13:30:00', routeId: 'trieste-venice', stepIndex: 11 },
-  { id: 'stay-11', type: 'stay', city: 'Venice (Mestre)', label: 'Ca\' Vivaldi Appartamento', start: '2026-08-21T13:30:00', end: '2026-08-22T10:00:00', coords: [45.4892, 12.2436], country: 'Italy', stepIndex: 11 },
-  { id: 'transit-13', type: 'transit', mode: 'train', label: 'To Cinque Terre', start: '2026-08-22T10:00:00', end: '2026-08-22T14:30:00', routeId: 'venice-volastra', stepIndex: 11 },
-  { id: 'stay-12', type: 'stay', city: 'Volastra', label: 'CREUZA DE 5 TERRE', start: '2026-08-22T14:30:00', end: '2026-08-25T10:00:00', coords: [44.1147, 9.7346], country: 'Italy', stepIndex: 12 },
-  { id: 'transit-14', type: 'transit', mode: 'train', label: 'To Lucca', start: '2026-08-25T10:00:00', end: '2026-08-25T12:15:00', routeId: 'volastra-lucca', stepIndex: 12 },
-  { id: 'stay-13', type: 'stay', city: 'Lucca', label: 'Casa Alice Lucca centro', start: '2026-08-25T12:15:00', end: '2026-08-26T08:00:00', coords: [43.8421, 10.5053], country: 'Italy', stepIndex: 13 },
-  { id: 'transit-15', type: 'transit', mode: 'train', label: 'To Rome Airport', start: '2026-08-26T08:00:00', end: '2026-08-26T12:00:00', routeId: 'lucca-rome', stepIndex: 13 },
-  { id: 'transit-16', type: 'transit', mode: 'flight', label: 'To Reykjavik', start: '2026-08-26T12:00:00', end: '2026-08-26T18:00:00', routeId: 'rome-reykjavik', stepIndex: 14 },
-  { id: 'stay-14', type: 'stay', city: 'Reykjavik', label: 'Skólavörðustígur Apartments', start: '2026-08-26T18:00:00', end: '2026-08-27T10:00:00', coords: [64.1439, -21.9334], country: 'Iceland', stepIndex: 14 },
-  { id: 'transit-17', type: 'transit', mode: 'flight', label: 'Flight Home', start: '2026-08-27T10:00:00', end: '2026-08-27T15:45:00', routeId: 'reykjavik-halifax', stepIndex: 14 },
-  { id: 'stay-15', type: 'stay', city: 'Halifax', label: 'Airport', start: '2026-08-27T15:45:00', end: '2026-08-27T17:00:00', coords: [44.8807, -63.5086], country: 'Canada', stepIndex: 15 },
-  { id: 'transit-18', type: 'transit', mode: 'drive', label: 'Home', start: '2026-08-27T17:00:00', end: '2026-08-27T18:15:00', routeId: 'halifax-home', stepIndex: 15 },
-  { id: 'stay-16', type: 'stay', city: 'Wolfville', label: TRIP_METADATA.homeName, start: '2026-08-27T18:15:00', end: '2026-08-27T23:59:59', coords: TRIP_METADATA.homeCoords, country: 'Canada', stepIndex: 16, isHome: true },
-];
-
+  // Convert timeline data to items with route references
   return timelineData.map(item => {
     if (item.type === 'transit' && item.routeId) {
+      const route = transitRouteLookup[item.routeId];
       return {
         ...item,
         start: new Date(item.start),
         end: new Date(item.end),
-        route: transitRouteLookup[item.routeId]
+        route: route || null
       };
     }
     return {
@@ -635,7 +611,7 @@ mapRef.current = map;
           html: `
             <div class="map-label map-label--route" style="--label-color: ${colorMap[route.mode]}">
               ${getIconHtml(modeIconKey, colorMap[route.mode], 18)}
-              <span>${route.travelTime}</span>
+              <span>${formatTravelTime(route.travelTime)}</span>
             </div>
           `,
           className: 'route-label',
@@ -930,8 +906,9 @@ const getLodgingIcon = (category, size = 14) => (
 // Timeline Component
 const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId, onActivitySelect, lodgingSteps, timelineItems, activities }) => {
   const scrollRef = useRef(null);
-  const tripStart = new Date('2026-07-31T00:00:00');
-  const tripEnd = new Date('2026-08-27T23:59:59');
+  // Derive trip start/end from actual timeline data
+  const tripStart = timelineItems.length > 0 ? new Date(Math.min(...timelineItems.map(i => i.start.getTime()))) : new Date();
+  const tripEnd = timelineItems.length > 0 ? new Date(Math.max(...timelineItems.map(i => i.end.getTime()))) : new Date();
   const totalHours = (tripEnd - tripStart) / (1000 * 60 * 60);
   const hourWidth = 8;
   const totalWidth = totalHours * hourWidth;
@@ -943,13 +920,9 @@ const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId,
   useEffect(() => {
     if (scrollRef.current && lodgingSelectedId !== null) {
       const step = lodgingSteps[lodgingSelectedId];
-      if (step) {
-        const dateMatch = step.date.match(/Aug (\d+)/);
-        if (dateMatch) {
-          const day = parseInt(dateMatch[1]);
-          const pos = getPos(new Date(`2026-08-${day.toString().padStart(2, '0')}T12:00:00`));
-          scrollRef.current.scrollTo({ left: pos - 300, behavior: 'smooth' });
-        }
+      if (step && step.startDate) {
+        const pos = getPos(new Date(step.startDate + 'T12:00:00'));
+        scrollRef.current.scrollTo({ left: pos - 300, behavior: 'smooth' });
       }
     }
   }, [lodgingSelectedId]);
@@ -964,11 +937,6 @@ const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId,
     }
   };
   
-  const getDayOfWeek = (dayNum) => {
-    const date = new Date(`2026-08-${dayNum.toString().padStart(2, '0')}`);
-    return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getDay()];
-  };
-  
   const destinationSteps = lodgingSteps.filter(step => step.isDestination);
   const countryCount = new Set(destinationSteps.map(step => step.country)).size;
   const destinationCount = destinationSteps.length;
@@ -980,59 +948,61 @@ const Timeline = ({ selectedId, onSelect, lodgingSelectedId, selectedActivityId,
           <h1 className="font-serif italic text-5xl font-bold text-slate-900 tracking-tight leading-none">Europe 2026</h1>
         </div>
         <div className="text-base font-bold uppercase tracking-wider text-slate-600">
-          August 1–27 · {destinationCount} Destinations · {countryCount} Countries
+          {tripStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}–{tripEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} · {destinationCount} Destinations · {countryCount} Countries
         </div>
       </div>
 
       <div className="sticky top-0 bg-white z-50">
         <div className="relative h-32 overflow-x-auto custom-scrollbar" ref={scrollRef}>
           <div className="relative h-full" style={{ width: `${totalWidth + 64}px` }}>
- {/* Day tickmarks and labels */}
-            {/* July 31 */}
-            <div
-              key="tick-jul-31-start"
-              className="absolute w-0.5 bg-slate-600 opacity-50 z-40"
-              style={{ left: `${32}px`, top: '0px', height: '77px' }}
-            />
-            <div
-              key="label-jul-31"
-              className="absolute flex flex-col items-center"
-              style={{ left: `${12 * hourWidth + 32}px`, top: '0px', transform: 'translateX(-50%)' }}
-            >
-              <span className="text-sm font-black text-slate-600 tabular-nums z-50" style={{ height: '29px', display: 'flex', alignItems: 'flex-end' }}>THU 7/31</span>
-            </div>
-            <div
-              key="tick-jul-31-end"
-              className="absolute w-0.5 bg-slate-600 opacity-50 z-40"
-              style={{ left: `${24 * hourWidth + 32}px`, top: '0px', height: '77px' }}
-            />
-            
-            {/* August days */}
-            {Array.from({ length: 27 }, (_, i) => {
-              const day = i + 1;
+ {/* Day tickmarks and labels — generated dynamically from trip dates */}
+            {(() => {
+              const dayLabels = [];
+              const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
               const dayWidth = 24 * hourWidth;
-              const baseOffset = 24 * hourWidth; // Offset for July 31
-              const dayStart = baseOffset + (day - 1) * dayWidth;
-              const dayCenter = dayStart + (dayWidth / 2);
-              const dayEnd = dayStart + dayWidth;
-              
-              return (
-                <React.Fragment key={`day-${day}`}>
-                  {/* End tickmark (which is also start of next day) */}
-                  <div
-                    className="absolute w-0.5 bg-slate-600 opacity-50 z-40"
-                    style={{ left: `${dayEnd + 32}px`, top: '0px', height: '77px' }}
-                  />
-                  {/* Day label centered between tickmarks */}
-                  <div
-                    className="absolute flex flex-col items-center"
-                    style={{ left: `${dayCenter + 32}px`, top: '0px', transform: 'translateX(-50%)' }}
-                  >
-                    <span className="text-sm font-black text-slate-600 tabular-nums z-50" style={{ height: '29px', display: 'flex', alignItems: 'flex-end' }}>{getDayOfWeek(day)} 8/{day}</span>
-                  </div>
-                </React.Fragment>
-              );
-            })}
+              // Start from the beginning of tripStart's day
+              const firstDay = new Date(tripStart);
+              firstDay.setHours(0, 0, 0, 0);
+              const lastDay = new Date(tripEnd);
+              lastDay.setHours(23, 59, 59, 999);
+              const totalDays = Math.ceil((lastDay - firstDay) / (1000 * 60 * 60 * 24));
+
+              for (let d = 0; d < totalDays; d++) {
+                const currentDay = new Date(firstDay);
+                currentDay.setDate(firstDay.getDate() + d);
+                const dayStartX = d * dayWidth;
+                const dayCenterX = dayStartX + dayWidth / 2;
+                const dayEndX = dayStartX + dayWidth;
+                const dayOfWeek = dayNames[currentDay.getDay()];
+                const month = currentDay.getMonth() + 1;
+                const dayNum = currentDay.getDate();
+
+                dayLabels.push(
+                  <React.Fragment key={`day-${d}`}>
+                    {/* Start tickmark for first day */}
+                    {d === 0 && (
+                      <div
+                        className="absolute w-0.5 bg-slate-600 opacity-50 z-40"
+                        style={{ left: `${32}px`, top: '0px', height: '77px' }}
+                      />
+                    )}
+                    {/* End tickmark */}
+                    <div
+                      className="absolute w-0.5 bg-slate-600 opacity-50 z-40"
+                      style={{ left: `${dayEndX + 32}px`, top: '0px', height: '77px' }}
+                    />
+                    {/* Day label centered */}
+                    <div
+                      className="absolute flex flex-col items-center"
+                      style={{ left: `${dayCenterX + 32}px`, top: '0px', transform: 'translateX(-50%)' }}
+                    >
+                      <span className="text-sm font-black text-slate-600 tabular-nums z-50" style={{ height: '29px', display: 'flex', alignItems: 'flex-end' }}>{dayOfWeek} {month}/{dayNum}</span>
+                    </div>
+                  </React.Fragment>
+                );
+              }
+              return dayLabels;
+            })()}
 
             {timelineItems.map((item) => {
               const startX = getPos(item.start);
@@ -1203,16 +1173,16 @@ const App = () => {
     homeName: homeLoc?.name || 'Home',
     airportAddress: airportLoc?.address || '',
     airportCoords: airportLoc?.coords || [0, 0],
-    tripStart: new Date('2026-08-01T00:00:00'),
-    tripEnd: new Date('2026-08-27T23:59:59')
+    tripStart: tripSteps.length > 0 ? new Date(tripSteps[0].startDate + 'T00:00:00') : new Date(),
+    tripEnd: tripSteps.length > 0 ? new Date(tripSteps[tripSteps.length - 1].endDate + 'T23:59:59') : new Date()
   };
 
   // Use enriched data from Airtable (same structure as before)
   const lodgingSteps = tripSteps;
   const transitRoutes = routes;
 
-  // Generate timeline items from loaded data
-  const timelineItems = generateTimelineItems(transitRoutes, TRIP_METADATA);
+  // Generate timeline items dynamically from loaded data
+  const timelineItems = generateTimelineItems(transitRoutes, lodgingSteps, TRIP_METADATA);
 
   const currentStep = lodgingSteps[selectedIdx];
   const currentItem = timelineItems.find(item => item.id === selectedTimelineId);
@@ -1358,7 +1328,7 @@ const App = () => {
                 {currentItem.route?.travelTime && (
                   <div className="flex items-center gap-1.5 text-slate-400 mb-6">
                     <Icon name={ICONS.clock} size={13} />
-                    <span className="text-sm">Travel Time: {currentItem.route.travelTime}</span>
+                    <span className="text-sm">Travel Time: {formatTravelTime(currentItem.route.travelTime)}</span>
                   </div>
                 )}
 

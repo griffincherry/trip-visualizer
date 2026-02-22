@@ -107,7 +107,7 @@ export const fetchRoutes = async () => {
         fromLocationId: record.get('from_location_id'),
         toLocationId: record.get('to_location_id'),
         waypointIds: waypointIds,
-        travelTime: record.get('travel_time') || '',
+        travelTime: record.get('travel_time') || 0,
         notes: record.get('notes') || ''
       };
     });
@@ -195,6 +195,8 @@ export const fetchAllTripData = async () => {
         ...route,
         fromCoords: fromLocation.coords,
         toCoords: toLocation.coords,
+        fromCity: fromLocation.city,
+        toCity: toLocation.city,
         waypoints
       };
     });
@@ -299,6 +301,19 @@ function formatDateRange(startDate, endDate) {
 }
 
 /**
+ * Helper function: Format travel time from minutes to display string
+ * e.g. 135 → "2h 15m", 45 → "45m", 120 → "2h"
+ */
+export const formatTravelTime = (minutes) => {
+  if (!minutes || minutes <= 0) return '';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
+/**
  * Helper function: Calculate nights between dates
  */
 export const calculateNights = (startDate, endDate) => {
@@ -307,4 +322,153 @@ export const calculateNights = (startDate, endDate) => {
   const end = new Date(endDate);
   const nights = Math.round((end - start) / (1000 * 60 * 60 * 24));
   return Math.max(0, nights);
+};
+
+/**
+ * Link routes to trip steps based on location IDs
+ * This creates the fromStepOrder and toStepOrder references
+ */
+export const linkRoutesToSteps = (routes, tripSteps) => {
+  return routes.map(route => {
+    // Find which trip step this route departs from
+    const fromStep = tripSteps.find(step =>
+      step.locationId === route.fromLocationId
+    );
+
+    // Find which trip step this route arrives at
+    const toStep = tripSteps.find(step =>
+      step.locationId === route.toLocationId
+    );
+
+    return {
+      ...route,
+      fromStepOrder: fromStep ? fromStep.stepOrder : null,
+      toStepOrder: toStep ? toStep.stepOrder : null
+    };
+  });
+};
+
+/**
+ * Find the chain of routes connecting two cities.
+ * Handles direct routes (A→B) and one-hop chains (A→C→B).
+ */
+const findRouteChain = (routes, fromCity, toCity) => {
+  // Try direct route first
+  const direct = routes.find(r => r.fromCity === fromCity && r.toCity === toCity);
+  if (direct) return [direct];
+
+  // Try two-hop chain: fromCity → intermediate → toCity
+  const fromRoutes = routes.filter(r => r.fromCity === fromCity);
+  for (const first of fromRoutes) {
+    const second = routes.find(r => r.fromCity === first.toCity && r.toCity === toCity);
+    if (second) return [first, second];
+  }
+
+  return [];
+};
+
+/**
+ * Generate timeline items dynamically from trip data
+ * This replaces the hardcoded timelineData array
+ */
+export const generateTimelineFromSteps = (tripSteps, routes, metadata) => {
+  const items = [];
+  let transitCounter = 0;
+
+  // Sort steps by step_order to ensure correct sequence
+  const sortedSteps = [...tripSteps].sort((a, b) => a.stepOrder - b.stepOrder);
+
+  sortedSteps.forEach((step, index) => {
+    // Create stay item for this step
+    const stayStart = new Date(step.startDate + 'T00:00:00');
+    const stayEnd = new Date(step.endDate + 'T23:59:59');
+
+    // Smart defaults for check-in/check-out times
+    if (index === 0) {
+      stayStart.setHours(0, 0, 0);
+      stayEnd.setHours(8, 0, 0);
+    } else if (index === sortedSteps.length - 1) {
+      stayStart.setHours(18, 0, 0);
+      stayEnd.setHours(23, 59, 59);
+    } else {
+      stayStart.setHours(14, 0, 0);
+      stayEnd.setHours(10, 0, 0);
+    }
+
+    items.push({
+      id: `stay-${index}`,
+      type: 'stay',
+      city: step.city,
+      label: step.lodging,
+      start: stayStart.toISOString(),
+      end: stayEnd.toISOString(),
+      coords: step.coords,
+      country: step.country,
+      stepIndex: index,
+      isHome: step.isHome || false
+    });
+
+    // Add transit items between this step and next
+    if (index < sortedSteps.length - 1) {
+      const nextStep = sortedSteps[index + 1];
+      const routeChain = findRouteChain(routes, step.city, nextStep.city);
+
+      if (routeChain.length === 0) {
+        console.warn(`No route found from ${step.city} to ${nextStep.city}`);
+      }
+
+      // Calculate total transit duration across all routes in chain
+      const totalMinutes = routeChain.reduce((sum, r) => sum + (r.travelTime || 0), 0);
+      const chainTransitStart = new Date(stayEnd);
+      const chainTransitEnd = new Date(nextStep.startDate + 'T00:00:00');
+
+      // Set arrival time
+      if (step.endDate === nextStep.startDate) {
+        chainTransitEnd.setHours(index === 0 ? 9 : 14, index === 0 ? 15 : 0, 0);
+      } else {
+        chainTransitEnd.setHours(14, 0, 0);
+      }
+
+      const totalChainMs = chainTransitEnd - chainTransitStart;
+
+      // Distribute time across route chain proportionally by travelTime
+      let elapsed = 0;
+      routeChain.forEach((route, routeIdx) => {
+        const proportion = totalMinutes > 0
+          ? (route.travelTime || 0) / totalMinutes
+          : 1 / routeChain.length;
+        const segmentMs = totalChainMs * proportion;
+
+        const segStart = new Date(chainTransitStart.getTime() + elapsed);
+        const segEnd = new Date(chainTransitStart.getTime() + elapsed + segmentMs);
+        elapsed += segmentMs;
+
+        // Label logic
+        let label;
+        if (route.mode === 'flight') {
+          label = route.travelTime && route.travelTime > 360
+            ? 'Overnight Flight'
+            : `Flight to ${route.toCity}`;
+        } else if (routeIdx === routeChain.length - 1) {
+          label = `To ${nextStep.city}`;
+        } else {
+          label = `To ${route.toCity}`;
+        }
+
+        items.push({
+          id: `transit-${transitCounter}`,
+          type: 'transit',
+          mode: route.mode,
+          label,
+          start: segStart.toISOString(),
+          end: segEnd.toISOString(),
+          routeId: route.id,
+          stepIndex: index
+        });
+        transitCounter++;
+      });
+    }
+  });
+
+  return items;
 };
