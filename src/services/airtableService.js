@@ -349,19 +349,66 @@ export const linkRoutesToSteps = (routes, tripSteps) => {
 };
 
 /**
- * Find the chain of routes connecting two cities.
- * Handles direct routes (A→B) and one-hop chains (A→C→B).
+ * Check if a route endpoint (by location ID, city, or coords) matches a trip step.
+ * Uses three strategies: exact location ID, normalized city name, geographic proximity.
  */
-const findRouteChain = (routes, fromCity, toCity) => {
-  // Try direct route first
-  const direct = routes.find(r => r.fromCity === fromCity && r.toCity === toCity);
-  if (direct) return [direct];
+const endpointMatchesStep = (locationId, city, coords, step) => {
+  // Exact location ID
+  if (locationId === step.locationId) return true;
+  // Normalized city name (strip parenthetical qualifiers like "Venice (Mestre)" → "Venice")
+  const norm = s => s?.replace(/\s*\(.*\)/, '').trim().toLowerCase();
+  if (norm(city) && norm(step.city) && norm(city) === norm(step.city)) return true;
+  // Geographic proximity (within 30 km — covers station-to-lodging in the same area)
+  if (coords && step.coords) {
+    const dLat = (coords[0] - step.coords[0]) * 111;
+    const dLng = (coords[1] - step.coords[1]) * 111 * Math.cos(coords[0] * Math.PI / 180);
+    if (Math.sqrt(dLat * dLat + dLng * dLng) < 30) return true;
+  }
+  return false;
+};
 
-  // Try two-hop chain: fromCity → intermediate → toCity
-  const fromRoutes = routes.filter(r => r.fromCity === fromCity);
-  for (const first of fromRoutes) {
-    const second = routes.find(r => r.fromCity === first.toCity && r.toCity === toCity);
-    if (second) return [first, second];
+/**
+ * Find the chain of routes connecting two steps.
+ * Uses BFS through the route graph with flexible endpoint matching
+ * (location ID, normalized city name, and geographic proximity).
+ * Handles multi-hop chains where routes connect stations rather than lodgings.
+ */
+const findRouteChain = (routes, fromStep, toStep) => {
+  // Build adjacency list: fromLocationId → [routes]
+  const byFrom = {};
+  routes.forEach(r => {
+    if (!byFrom[r.fromLocationId]) byFrom[r.fromLocationId] = [];
+    byFrom[r.fromLocationId].push(r);
+  });
+
+  // Seed BFS with all route origins that match the departure step
+  // (covers cases where routes depart from a station near the lodging)
+  const startIds = new Set([fromStep.locationId]);
+  routes.forEach(r => {
+    if (endpointMatchesStep(r.fromLocationId, r.fromCity, r.fromCoords, fromStep)) {
+      startIds.add(r.fromLocationId);
+    }
+  });
+
+  // BFS: find shortest route chain to the destination step
+  const queue = [...startIds].map(id => ({ locId: id, path: [] }));
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const { locId, path } = queue.shift();
+    if (visited.has(locId)) continue;
+    visited.add(locId);
+
+    const outRoutes = byFrom[locId] || [];
+    for (const route of outRoutes) {
+      const newPath = [...path, route];
+      if (newPath.length > 5) continue; // safety limit
+
+      if (endpointMatchesStep(route.toLocationId, route.toCity, route.toCoords, toStep)) {
+        return newPath;
+      }
+      queue.push({ locId: route.toLocationId, path: newPath });
+    }
   }
 
   return [];
@@ -411,10 +458,10 @@ export const generateTimelineFromSteps = (tripSteps, routes, metadata) => {
     // Add transit items between this step and next
     if (index < sortedSteps.length - 1) {
       const nextStep = sortedSteps[index + 1];
-      const routeChain = findRouteChain(routes, step.city, nextStep.city);
+      const routeChain = findRouteChain(routes, step, nextStep);
 
       if (routeChain.length === 0) {
-        console.warn(`No route found from ${step.city} to ${nextStep.city}`);
+        console.warn(`No route found from ${step.city} (${step.locationId}) to ${nextStep.city} (${nextStep.locationId})`);
       }
 
       // Calculate total transit duration across all routes in chain

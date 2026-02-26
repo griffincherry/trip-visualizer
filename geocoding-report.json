@@ -1,0 +1,470 @@
+[
+  {
+    "id": "home-wolfville",
+    "address": "33 Highland Ave., Wolfville, NS, Canada",
+    "oldCoords": [
+      45.0914,
+      -64.3639
+    ],
+    "newCoords": [
+      45.0880041,
+      -64.3633975
+    ],
+    "changed": true
+  },
+  {
+    "id": "airport-halifax",
+    "address": "Halifax Stanfield International Airport, 1 Bell Blvd, Enfield, NS B2T 1K2, Canada",
+    "oldCoords": [
+      44.8807,
+      -63.5086
+    ],
+    "newCoords": [
+      44.8807,
+      -63.5086
+    ],
+    "changed": false
+  },
+  {
+    "id": "airport-rome",
+    "address": "Leonardo da Vinci–Fiumicino Airport, Fiumicino, Italy",
+    "oldCoords": [
+      41.8003,
+      12.2389
+    ],
+    "newCoords": [
+      41.8003,
+      12.2389
+    ],
+    "changed": false
+  },
+  {
+    "id": "airport-keflavik",
+    "address": "Keflavík International Airport, 235 Reykjanesbær, Iceland",
+    "oldCoords": [
+      64.13,
+      -21.9406
+    ],
+    "newCoords": [
+      64.13,
+      -21.9406
+    ],
+    "changed": false
+  },
+  {
+    "id": "station-thehague",
+    "address": "Den Haag Centraal, The Hague, Netherlands",
+    "oldCoords": [
+      52.0808,
+      4.3242
+    ],
+    "newCoords": [
+      52.0808443,
+      4.3245487
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-ghent",
+    "address": "Gent-Sint-Pieters, Ghent, Belgium",
+    "oldCoords": [
+      51.0357,
+      3.7103
+    ],
+    "newCoords": [
+      51.0355237,
+      3.7107158
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-antwerp",
+    "address": "Antwerpen-Centraal, Antwerp, Belgium",
+    "oldCoords": [
+      51.2171,
+      4.4214
+    ],
+    "newCoords": [
+      51.2162206,
+      4.4210686
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-brussels",
+    "address": "Brussels Central Station, Brussels, Belgium",
+    "oldCoords": [
+      50.8353,
+      4.3363
+    ],
+    "newCoords": [
+      50.8454639,
+      4.3569867
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-cologne",
+    "address": "Köln Hauptbahnhof, Cologne, Germany",
+    "oldCoords": [
+      50.943,
+      6.9589
+    ],
+    "newCoords": [
+      50.9427839,
+      6.9590705
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-koblenz",
+    "address": "Koblenz Hauptbahnhof, Koblenz, Germany",
+    "oldCoords": [
+      50.3569,
+      7.5989
+    ],
+    "newCoords": [
+      50.3500767,
+      7.5907249
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-salzburg",
+    "address": "Salzburg Hauptbahnhof, Salzburg, Austria",
+    "oldCoords": [
+      47.8128,
+      13.0458
+    ],
+    "newCoords": [
+      47.8130618,
+      13.045853
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-trieste",
+    "address": "Trieste Centrale, Trieste, Italy",
+    "oldCoords": [
+      45.66,
+      13.784
+    ],
+    "newCoords": [
+      45.6577271,
+      13.7719478
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-venice",
+    "address": "Venezia Mestre Station, Venice, Italy",
+    "oldCoords": [
+      45.4834,
+      12.2327
+    ],
+    "newCoords": [
+      45.482462,
+      12.2317016
+    ],
+    "changed": true
+  },
+  {
+    "id": "station-laspezia",
+    "address": "La Spezia Centrale, La Spezia, Italy",
+    "oldCoords": [
+      44.1088,
+      9.825
+    ],
+    "newCoords": [
+      44.111564,
+      9.81358
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-thehague",
+    "address": "8 Veenkade, The Hague City Center, 2513 EE The Hague, Netherlands",
+    "oldCoords": [
+      52.0788,
+      4.3118
+    ],
+    "newCoords": [
+      52.0788,
+      4.3118
+    ],
+    "changed": false
+  },
+  {
+    "id": "lodging-ghent",
+    "address": "20 Sluizeken, 9000 Ghent, Belgium",
+    "oldCoords": [
+      51.0533,
+      3.7311
+    ],
+    "newCoords": [
+      51.0599014,
+      3.7250483
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-koblenz",
+    "address": "Löhrstraße 84, 56068 Koblenz, Germany",
+    "oldCoords": [
+      50.3548,
+      7.5976
+    ],
+    "newCoords": [
+      50.3554269,
+      7.5900642
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-salzburg",
+    "address": "Fanny-von-Lehnert-Straße 4, 5020 Salzburg, Austria",
+    "oldCoords": [
+      47.8137,
+      13.0461
+    ],
+    "newCoords": [
+      47.8151259,
+      13.0444981
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-drazice",
+    "address": "Borovička ul. 29, 51218 Dražice, Croatia",
+    "oldCoords": [
+      45.3917,
+      14.5131
+    ],
+    "newCoords": [
+      45.3917,
+      14.5131
+    ],
+    "changed": false
+  },
+  {
+    "id": "lodging-plitvice",
+    "address": "266 Grabovac, 47245 Rakovica, Croatia",
+    "oldCoords": [
+      44.9153,
+      15.6179
+    ],
+    "newCoords": [
+      44.9719908,
+      15.6482022
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-mojstrana",
+    "address": "11 Triglavska cesta, 4281 Mojstrana, Slovenia",
+    "oldCoords": [
+      46.4844,
+      13.9288
+    ],
+    "newCoords": [
+      46.4618791,
+      13.9417607
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-mostnasoci",
+    "address": "Most na Soči 101, 5216 Most na Soči, Slovenia",
+    "oldCoords": [
+      46.1897,
+      13.6618
+    ],
+    "newCoords": [
+      46.151922,
+      13.747518
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-vizinada",
+    "address": "BALDASI 10, 52447 Vižinada, Croatia",
+    "oldCoords": [
+      45.3339,
+      13.7658
+    ],
+    "newCoords": [
+      45.3152663,
+      13.7157751
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-venice",
+    "address": "8A Via Antonio Vivaldi, 30171 Venice, Italy",
+    "oldCoords": [
+      45.4892,
+      12.2436
+    ],
+    "newCoords": [
+      45.4924042,
+      12.2301681
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-volastra",
+    "address": "304 Via Montello, 19017 Volastra, Italy",
+    "oldCoords": [
+      44.1147,
+      9.7346
+    ],
+    "newCoords": [
+      44.1148332,
+      9.7301437
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-lucca",
+    "address": "3 Via San Pierino, 55100 Lucca, Italy",
+    "oldCoords": [
+      43.8421,
+      10.5053
+    ],
+    "newCoords": [
+      43.8422646,
+      10.4994347
+    ],
+    "changed": true
+  },
+  {
+    "id": "lodging-reykjavik",
+    "address": "Skólavörðustígur 21A, 101 Reykjavík, Iceland",
+    "oldCoords": [
+      64.1439,
+      -21.9334
+    ],
+    "newCoords": [
+      64.1444793,
+      -21.9299654
+    ],
+    "changed": true
+  },
+  {
+    "id": "waypoint-senj",
+    "address": "Senj, Croatia",
+    "oldCoords": [
+      44.9897,
+      14.9064
+    ],
+    "newCoords": [
+      45.3503765,
+      13.9098445
+    ],
+    "changed": true
+  },
+  {
+    "id": "waypoint-vrsic",
+    "address": "Vršič Pass, Slovenia",
+    "oldCoords": [
+      46.4,
+      13.74
+    ],
+    "newCoords": [
+      46.4347793,
+      13.7437123
+    ],
+    "changed": true
+  },
+  {
+    "id": "activity-mauritshuis",
+    "address": "Plein 29, 2511 CS The Hague, Netherlands",
+    "oldCoords": [
+      52.0804,
+      4.3137
+    ],
+    "newCoords": [
+      52.0803787,
+      4.314834
+    ],
+    "changed": true
+  },
+  {
+    "id": "activity-gravensteen",
+    "address": "Sint-Veerleplein 11, 9000 Ghent, Belgium",
+    "oldCoords": [
+      51.0576,
+      3.7203
+    ],
+    "newCoords": [
+      51.0571809,
+      3.7207652
+    ],
+    "changed": true
+  },
+  {
+    "id": "activity-plitvice-lakes",
+    "address": "Plitvice Lakes National Park, Croatia",
+    "oldCoords": [
+      44.8864,
+      15.6122
+    ],
+    "newCoords": [
+      44.8523013,
+      15.590349
+    ],
+    "changed": true
+  },
+  {
+    "id": "activity-triglav",
+    "address": "Triglav Summit, Triglav National Park, Slovenia",
+    "oldCoords": [
+      46.3788,
+      13.8364
+    ],
+    "newCoords": [
+      46.3788,
+      13.8364
+    ],
+    "changed": false
+  },
+  {
+    "id": "activity-truffle-tour",
+    "address": "Vižinada, Istria, Croatia",
+    "oldCoords": [
+      45.3347,
+      13.7628
+    ],
+    "newCoords": [
+      45.3306583,
+      13.7610548
+    ],
+    "changed": true
+  },
+  {
+    "id": "activity-cinque-terre-trail",
+    "address": "Sentiero Azzurro, Cinque Terre, Italy",
+    "oldCoords": [
+      44.1265,
+      9.712
+    ],
+    "newCoords": [
+      44.1265,
+      9.712
+    ],
+    "changed": false
+  },
+  {
+    "id": "activity-blue-lagoon",
+    "address": "Norðurljósavegur 9, 240 Grindavík, Iceland",
+    "oldCoords": [
+      63.8804,
+      -22.4495
+    ],
+    "newCoords": [
+      63.8800486,
+      -22.4493538
+    ],
+    "changed": true
+  }
+]
